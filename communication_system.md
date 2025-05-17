@@ -27,6 +27,7 @@ type Server struct {
 	rpcCh   chan RPC         // Channel for internal RPC message handling
 	quitch  chan struct{}    // Signal channel to shut down the server
 }
+```
 
 - 	rpcCh: used for internal routing of messages between peers.
 -   quitch: allows the server to be shut down cleanly.
@@ -41,7 +42,8 @@ func NewServer(opts ServerOpts) *Server {
 		rpcCh:      make(chan RPC),
 		quitch:     make(chan struct{}, 1),
 	}
-}```
+}
+```
 
 This creates a new Server with initialized channels and transport options, making it ready to handle peer communications.
 
@@ -58,7 +60,8 @@ type Transport interface {
 	Addr() string
 	SendMessage(to string, payload []byte) error
 	Consume() <-chan RPC
-}```
+}
+```
 
 
 Each Transport is responsible for:
@@ -86,7 +89,8 @@ func (s *Server) initTransports() {
 			}
 		}(tr)
 	}
-}```
+}
+```
 
 -   Each transport’s Consume() returns a channel from which messages can be read.
 -   A dedicated goroutine per transport allows the server to listen to multiple transports simultaneously without blocking.
@@ -119,7 +123,8 @@ free:
 	}
 
 	fmt.Println("Server shutting down...")
-}```
+}
+```
 
 ### The server listens concurrently on:
 -   rpcCh for incoming messages,
