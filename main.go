@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-
 	"github.com/ayushn2/blockchainz/network"
 )
 
