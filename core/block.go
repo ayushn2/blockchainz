@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"io"
 
@@ -31,9 +33,6 @@ func (h *Header) EncodeBinary(w io.Writer) error {
 	}
 	
 	return binary.Write(w,binary.LittleEndian, &h.Nonce)
-	
-	
-	
 }
 
 
@@ -58,4 +57,46 @@ func (h *Header) DecodeBinary(r io.Reader) error{
 type Block struct{
 	Header Header
 	Transactions []Transaction
+
+	// cachd version of the header hash
+	hash types.Hash // hash of the block, can be calculated from header and transactions
+}
+
+func (b *Block) Hash() types.Hash {
+	buf := &bytes.Buffer{}
+	b.Header.EncodeBinary(buf)
+
+	if b.hash.IsZero() {
+		b.hash = types.Hash(sha256.Sum256(buf.Bytes()))
+	}
+
+	
+	return b.hash
+}
+
+func (b *Block) EncodeBinary(w io.Writer) error{
+	if err := b.Header.EncodeBinary(w); err != nil {
+		return err
+	}
+
+	for _, tx := range b.Transactions {
+		if err := tx.EncodeBinary(w); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+func (b *Block) DecodeBinary(r io.Reader) error{
+	if err := b.Header.DecodeBinary(r); err != nil {
+		return err
+	}
+
+	for _, tx := range b.Transactions {
+		if err := tx.DecodeBinary(r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
