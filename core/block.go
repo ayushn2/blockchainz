@@ -1,11 +1,9 @@
 package core
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/binary"
 	"io"
 
+	"github.com/ayushn2/blockchainz/crypto"
 	"github.com/ayushn2/blockchainz/types"
 )
 
@@ -18,85 +16,42 @@ type Header struct {
 	Nonce uint64
 }
 
-func (h *Header) EncodeBinary(w io.Writer) error {
-	if err := binary.Write(w, binary.LittleEndian, &h.Version); err != nil{
-		return err
-	}
-	if err := binary.Write(w, binary.LittleEndian, &h.PrevHash); err != nil{
-		return err
-	}
-	if err := binary.Write(w, binary.LittleEndian, &h.Timestamp); err != nil{
-		return err
-	}
-	if err := binary.Write(w, binary.LittleEndian, &h.Height); err != nil{
-		return err
-	}
-	
-	return binary.Write(w,binary.LittleEndian, &h.Nonce)
-}
 
-
-func (h *Header) DecodeBinary(r io.Reader) error{
-	if err := binary.Read(r, binary.LittleEndian, &h.Version); err != nil{
-		return err
-	}
-	if err := binary.Read(r, binary.LittleEndian, &h.PrevHash); err != nil{
-		return err
-	}
-	if err := binary.Read(r, binary.LittleEndian, &h.Timestamp); err != nil{
-		return err
-	}
-	if err := binary.Read(r, binary.LittleEndian, &h.Height); err != nil{
-		return err
-	}
-	
-	return binary.Read(r,binary.LittleEndian, &h.Nonce)
-	
-}
 
 type Block struct{
-	Header Header
+	Header *Header
 	Transactions []Transaction
+	Validators crypto.PublicKey // public key of the validator who created the block
+	Signature *crypto.Signature // signature of the block header by the validator
 
-	// cachd version of the header hash
+	// cached version of the header hash
 	hash types.Hash // hash of the block, can be calculated from header and transactions
 }
 
-func (b *Block) Hash() types.Hash {
-	buf := &bytes.Buffer{}
-	b.Header.EncodeBinary(buf)
+func NewBlock(h *Header, tx []Transaction) *Block {
+	return &Block{
+		Header: h,
+		Transactions: tx,
+	}
 
+}
+
+
+
+func (b *Block) Decode(r io.Reader, dec Decoder[*Block]) error{
+	return dec.Decode(r, b)
+}
+
+func (b *Block) Encode(r io.Writer, enc Encoder[*Block]) error{
+	return enc.Encode(r, b)
+}
+
+// Hash computes the hash of the block using the provided hasher.
+// Hasher[*Block] means the hasher works specifically with *Block.
+func (b *Block) Hash(hasher Hasher[*Block]) types.Hash{
 	if b.hash.IsZero() {
-		b.hash = types.Hash(sha256.Sum256(buf.Bytes()))
+		b.hash = hasher.Hash(b)
 	}
 
-	
 	return b.hash
-}
-
-func (b *Block) EncodeBinary(w io.Writer) error{
-	if err := b.Header.EncodeBinary(w); err != nil {
-		return err
-	}
-
-	for _, tx := range b.Transactions {
-		if err := tx.EncodeBinary(w); err != nil {
-			return err
-		}
-	}
-	return nil
-
-}
-
-func (b *Block) DecodeBinary(r io.Reader) error{
-	if err := b.Header.DecodeBinary(r); err != nil {
-		return err
-	}
-
-	for _, tx := range b.Transactions {
-		if err := tx.DecodeBinary(r); err != nil {
-			return err
-		}
-	}
-	return nil
 }

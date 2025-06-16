@@ -1,18 +1,24 @@
 package core
 
-import "io"
+import (
+	"github.com/ayushn2/blockchainz/crypto"
+)
 
 type Transaction struct{
 	Data []byte//any type of data can be stored in a transaction, as this is a generic blockchain
+
+	PubKey crypto.PublicKey // public key of the sender
+	Signature *crypto.Signature // signature of the transaction by the sender
 }
 
-func (tx Transaction) DecodeBinary(r io.Reader) error {
-	// Implement decoding logic for Transaction
-	return nil
-}
+func (tx *Transaction) Sign(privKey crypto.PrivateKey) ( error){
+	sig, err := privKey.Sign(tx.Data)
+	if err != nil {
+		return err
+	}
 
+	tx.PubKey = privKey.PublicKey()
+	tx.Signature = sig
 
-func (tx Transaction) EncodeBinary(w io.Writer) error {
-	// Implement decoding logic for Transaction
 	return nil
 }
