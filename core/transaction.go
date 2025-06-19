@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/ayushn2/blockchainz/crypto"
 )
 
@@ -21,4 +23,17 @@ func (tx *Transaction) Sign(privKey crypto.PrivateKey) ( error){
 	tx.Signature = sig
 
 	return nil
+}
+
+func (tx *Transaction) Verify() error{
+	if tx.Signature == nil {
+		return fmt.Errorf("transaction has no signature")
+	}
+
+	if !tx.Signature.Verify(tx.PubKey, tx.Data) {
+		return fmt.Errorf("invalid transaction signature")
+	}
+
+	return nil
+	
 }
