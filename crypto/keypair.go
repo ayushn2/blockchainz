@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"math/big"
-
 	"github.com/ayushn2/blockchainz/types"
 ) 
 
