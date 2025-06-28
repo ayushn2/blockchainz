@@ -1,5 +1,7 @@
 package core
 
+import "fmt"
+
 // The Blockchain is a state machine, that transitions from one state to another
 // The genesis block is the initial state of the blockchain
 
@@ -38,6 +40,13 @@ func (bc *Blockchain) AddBlock(b *Block) error{
 	}
 
 	return bc.addBlockWithoutValidation(b)
+}
+
+func (bc *Blockchain) GetHeader(height uint32) (*Header, error) {
+	if height > bc.Height() {
+		return nil, fmt.Errorf("Header not found for prev block height %d, current height is %d", height, bc.Height())
+	}
+	return bc.headers[height], nil
 }
 
 func (bc *Blockchain) HasBlock(height uint32) bool {
