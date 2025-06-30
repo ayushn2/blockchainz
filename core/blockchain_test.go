@@ -19,6 +19,8 @@ func TestNewBlockchain(t *testing.T){
 func TestHasBlock(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 	assert.True(t, bc.HasBlock(0))
+	assert.False(t, bc.HasBlock(1))
+	assert.False(t, bc.HasBlock(100))
 }
 
 func TestAddBlock(t *testing.T) {
@@ -54,9 +56,14 @@ func TestGetHeader(t *testing.T) {
 func TestAddBlockToHigh(t *testing.T){
 	bc := newBlockchainWithGenesis(t)
 
-	// Add a block with height 10
-	block := randomBlockWithSignature(t, 10, types.Hash{})
+	// Add block with height 1
+	block := randomBlockWithSignature(t, 1, getPrevBlockHash(t, bc, uint32(1)))
 	err := bc.AddBlock(block)
+	assert.Nil(t, err)
+
+	// Add a block with height 10
+	block = randomBlockWithSignature(t, 10, types.Hash{})
+	err = bc.AddBlock(block)
 	assert.NotNil(t, err)
 }
 
@@ -67,6 +74,7 @@ func newBlockchainWithGenesis(t *testing.T) *Blockchain{
 	return bc
 }
 
+// getPrevBlockHash() gets the height of the previous block and takes height of the current as a parameter
 func getPrevBlockHash(t *testing.T, bc *Blockchain, height uint32) types.Hash {
 	prevHeader, err := bc.GetHeader(height -1)
 	assert.Nil(t, err)

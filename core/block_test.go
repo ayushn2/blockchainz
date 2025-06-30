@@ -10,30 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func randomBlock(height uint32, prevBlockHash types.Hash) *Block {
-	h := &Header{
-		Version:   1,
-		PrevHash:  prevBlockHash,
-		Timestamp: uint64(time.Now().UnixNano()),
-		Height:    height,
-		Nonce:     0,
-	}
 
-	tx := []Transaction{
-		{Data: []byte("test transaction")},
-	}
 
-	return NewBlock(h, tx)
-}
-
-func randomBlockWithSignature(t *testing.T, height uint32, prevBlockHash types.Hash) *Block {
-	privKey := crypto.GeneratePrivateKey()
-	b := randomBlock(height, prevBlockHash)
-	err := b.Sign(privKey)
-	assert.Nil(t, err)
- 
-	return b
-}
 
 func TestHashBlock(t *testing.T){
 	
@@ -54,7 +32,7 @@ func TestBlockVerify(t *testing.T){
 	b := randomBlock(0, types.Hash{})
 	
 	assert.Nil(t, b.Sign(privKey), "Block should be signed successfully")
-	assert.Nil(t, b.Verify(), "Block signature should not be nil after signing")
+	assert.Nil(t, b.Verify())
 
 	otherPrivKey := crypto.GeneratePrivateKey()
 	b.Validator = otherPrivKey.PublicKey()
@@ -63,4 +41,29 @@ func TestBlockVerify(t *testing.T){
 
 	b.Height = 1 // Change height to simulate a different block
 	assert.NotNil(t, b.Verify(), "Block verification should fail with different validator public key")
+}
+
+func randomBlock(height uint32, prevBlockHash types.Hash) *Block {
+	h := &Header{
+		Version:   1,
+		PrevHash:  prevBlockHash,
+		Timestamp: uint64(time.Now().UnixNano()),
+		Height:    height,
+		Nonce:     0,
+	}
+
+	tx := []Transaction{}
+
+	return NewBlock(h, tx)
+}
+
+func randomBlockWithSignature(t *testing.T, height uint32, prevBlockHash types.Hash) *Block {
+	privKey := crypto.GeneratePrivateKey() // this private key will be of the validator of the block, that's why we're not passing it
+	b := randomBlock(height, prevBlockHash)
+	tx := randomTxWithSignature(t)
+	b.AddTransaction(tx)
+	err := b.Sign(privKey)
+	assert.Nil(t, err)
+ 
+	return b
 }
