@@ -23,12 +23,32 @@ The project is ongoing and aims to evolve into a complete educational resource w
 
 ## 📘 Guides
 
+## 📘 Guides
+
+- [Guide 0: Communication System](https://github.com/ayushn2/blockchainz/blob/main/guide/0.%20communication_system.md)  
+  Goroutines, TCP networking, and how peers exchange messages.
+
+- [Guide 1: Block and Header](https://github.com/ayushn2/blockchainz/blob/main/guide/1.%20block_and_header.md)  
+  Structure of a block and header, encoding with `encoding/binary`, and design decisions.
+
+- [Guide 2: Keypairs and Digital Signatures](https://github.com/ayushn2/blockchainz/blob/main/guide/2.%20keypairs_and_digital_signatures.md)  
+  Cryptographic key generation, signing data, and verifying signatures using ECDSA.
+
+- [Guide 3: Block and Transaction Signing and Verification](https://github.com/ayushn2/blockchainz/blob/main/guide/3.%20block_and_transaction_signing_and_verification.md)  
+  Signing headers and transactions, verifying authenticity, and abstracting with helper methods.
+
+- [Guide 4: The Blockchain Data Structure](https://github.com/ayushn2/blockchainz/blob/main/guide/4.%20the_blockchain_data_structure.md)  
+  Map-based blockchain implementation, adding blocks, storing headers, and retrieving data.
+
+- [Guide 5: Block Validator](https://github.com/ayushn2/blockchainz/blob/main/guide/5.%20block_validator.md)  
+  Block validation logic (height, hash, signatures), current testing logic, and theoretical responsibilities of validators.
+
 This project is accompanied by a series of developer-friendly, educational guides that explain blockchain fundamentals through real Go code:
 
-- [Guide 1: Intro to Networking & Goroutines](./docs/guide1_networking_goroutines.md)  
+- [Guide 0: Intro to Networking & Goroutines](./docs/guide1_networking_goroutines.md)  
   Learn how Go’s concurrency model and goroutines support peer-to-peer networking.
 
-- [Guide 2: Blocks, Headers & Encoding](./docs/guide2_blocks_headers_encoding.md)  
+- [Guide 1: Blocks, Headers & Encoding](./docs/guide2_blocks_headers_encoding.md)  
   Understand the structure of a block, separation of headers, and how binary encoding works.
 
 - [Guide 3: Channels in Go](./docs/guide3_channels.md)  
