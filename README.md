@@ -23,8 +23,6 @@ The project is ongoing and aims to evolve into a complete educational resource w
 
 ## 📘 Guides
 
-## 📘 Guides
-
 - [Guide 0: Communication System](https://github.com/ayushn2/blockchainz/blob/main/guide/0.%20communication_system.md)  
   Goroutines, TCP networking, and how peers exchange messages.
 
@@ -42,23 +40,6 @@ The project is ongoing and aims to evolve into a complete educational resource w
 
 - [Guide 5: Block Validator](https://github.com/ayushn2/blockchainz/blob/main/guide/5.%20block_validator.md)  
   Block validation logic (height, hash, signatures), current testing logic, and theoretical responsibilities of validators.
-
-This project is accompanied by a series of developer-friendly, educational guides that explain blockchain fundamentals through real Go code:
-
-- [Guide 0: Intro to Networking & Goroutines](./docs/guide1_networking_goroutines.md)  
-  Learn how Go’s concurrency model and goroutines support peer-to-peer networking.
-
-- [Guide 1: Blocks, Headers & Encoding](./docs/guide2_blocks_headers_encoding.md)  
-  Understand the structure of a block, separation of headers, and how binary encoding works.
-
-- [Guide 3: Channels in Go](./docs/guide3_channels.md)  
-  A beginner-friendly deep dive into Go channels and how they support concurrent message flow.
-
-- [Guide 4: Signing & Verification](./docs/guide4_signing_verification.md)  
-  Explore how transactions and blocks are signed and verified using public-key cryptography.
-
-- [Guide 5: Block Validation](./docs/guide5_block_validation.md)  
-  Covers block validation logic, validator role, and what’s implemented vs. what’s theoretical.
 
 ## 🚧 Work in Progress
 
