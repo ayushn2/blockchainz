@@ -1,16 +1,19 @@
 package network
 
 import (
+	"github.com/ayushn2/blockchainz/crypto"
 	"fmt"
 	"time"
 )
 
 type ServerOpts struct{
 	Transports []Transport
+	PrivateKey *crypto.PrivateKey
 }
 
 type Server struct {
 	ServerOpts
+	isValidator bool // Indicates if the server/node is a validator
 	rpcCh chan RPC
 	quitch chan struct{}
 }
@@ -18,6 +21,7 @@ type Server struct {
 func NewServer(opts ServerOpts) *Server {
 	return &Server{
 		ServerOpts: opts,
+		isValidator: opts.PrivateKey != nil, // If a private key is provided, this server/node is a validator
 		rpcCh: make(chan RPC),
 		quitch: make(chan struct{}, 1),
 	}

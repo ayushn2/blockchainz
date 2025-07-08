@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ayushn2/blockchainz/crypto"
+	"github.com/ayushn2/blockchainz/types"
 )
 
 type Transaction struct{
@@ -11,6 +12,16 @@ type Transaction struct{
 
 	From crypto.PublicKey // public key of the sender
 	Signature *crypto.Signature // signature of the transaction by the sender
+}
+
+func NewTransaction(data []byte) *Transaction {
+	return &Transaction{
+		Data: data,
+	}
+}
+
+func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash{
+	return hasher.Hash(tx)
 }
 
 func (tx *Transaction) Sign(privKey crypto.PrivateKey) error{
