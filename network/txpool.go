@@ -19,13 +19,10 @@ func (p *TxPool) Len() int{
 	return len(p.transactions)
 }
 
+// Adds a transaction to the pool, the caller is responsible for 
+// ensuring the transaction is already present
 func (p *TxPool) Add(tx *core.Transaction) error{
 	hash := tx.Hash(core.TxHasher{})
-	if p.Has(hash) {
-		return nil // Transaction already exists in the pool
-		// no need to return an error becoz we are going to frequently face repeated transactions
-	}
-
 	p.transactions[hash] = tx
 
 	return nil

@@ -1,18 +1,24 @@
 package network
 
 import (
-	"github.com/ayushn2/blockchainz/crypto"
 	"fmt"
 	"time"
+
+	"github.com/ayushn2/blockchainz/core"
+	"github.com/ayushn2/blockchainz/crypto"
+	"github.com/sirupsen/logrus"
 )
 
 type ServerOpts struct{
 	Transports []Transport
+	BlockTime time.Duration
 	PrivateKey *crypto.PrivateKey
 }
 
 type Server struct {
 	ServerOpts
+	blockTime time.Duration // the time after which server needs to consume the mempool and put it in the block and sign it
+	memPool *TxPool // Memory pool for transactions
 	isValidator bool // Indicates if the server/node is a validator
 	rpcCh chan RPC
 	quitch chan struct{}
@@ -21,15 +27,17 @@ type Server struct {
 func NewServer(opts ServerOpts) *Server {
 	return &Server{
 		ServerOpts: opts,
+		blockTime: opts.BlockTime,
+		memPool: NewTxPool(), // Initialize a new transaction pool
 		isValidator: opts.PrivateKey != nil, // If a private key is provided, this server/node is a validator
-		rpcCh: make(chan RPC),
+		rpcCh: make(chan RPC), 
 		quitch: make(chan struct{}, 1),
 	}
 }
 
 func (s *Server) Start() {
 	s.initTransports()
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(s.blockTime)
 
 free:
 	for {
@@ -40,11 +48,47 @@ free:
 		case <-s.quitch:
 			break free
 		case <-ticker.C:
-			fmt.Println("Server is running...")
+			// Check if the server is a validator and if there are transactions in the mempool
+			//this is just consensus placeholder for now
+			if s.isValidator && s.memPool.Len() > 0 {
+			s.createNewBlock()
+			}
 		}
 	}
 
 	fmt.Println("Server shutting down...")
+}
+
+func (s *Server) handleTransaction(tx *core.Transaction) error {
+	if err := tx.Verify(); err != nil {
+		return fmt.Errorf("failed to verify transaction: %w", err)
+	}
+
+	hash := tx.Hash(core.TxHasher{})
+
+	if s.memPool.Has(hash){
+		logrus.WithFields(logrus.Fields{
+			"hash": hash,
+		}).Info("mempool already contains this transaction")
+
+		return nil
+	}
+	
+	logrus.WithFields(logrus.Fields{
+		"hash": tx.Hash(core.TxHasher{}),
+	}).Info("adding new transaction to mempool")
+
+	if err := s.memPool.Add(tx); err != nil {
+		return fmt.Errorf("failed to add transaction to mempool: %w", err)
+	}
+
+	fmt.Printf("Transaction added to mempool: %s\n", tx.Hash(core.TxHasher{}))
+	return nil
+}
+
+func (s *Server) createNewBlock() error{
+	fmt.Println("creating a new block...")
+	return nil
 }
 
 func (s *Server) initTransports() {

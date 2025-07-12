@@ -21,6 +21,11 @@ func TestTxPoolAddTx(t *testing.T){
 	assert.NoError(t, err, "Adding a transaction should not return an error")
 	assert.Equal(t, p.Len(), 1, "Transaction pool should have one transaction after adding")
 
+	txx := core.NewTransaction([]byte("test transaction")) // same transaction
+	err = p.Add(txx) // adding the same transaction again
+	assert.Nil(t, err, "Adding the same transaction again should not return an error")
+	assert.Equal(t, p.Len(), 1, "Transaction pool should still have one transaction after adding the same transaction again")
+
 	p.Flush()
 	assert.Equal(t, p.Len(), 0, "Transaction pool should be empty after flushing")
 }

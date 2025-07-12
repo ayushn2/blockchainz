@@ -12,6 +12,8 @@ type Transaction struct{
 
 	From crypto.PublicKey // public key of the sender
 	Signature *crypto.Signature // signature of the transaction by the sender
+
+	hash types.Hash // hash of the transaction, computed from Data
 }
 
 func NewTransaction(data []byte) *Transaction {
@@ -21,6 +23,9 @@ func NewTransaction(data []byte) *Transaction {
 }
 
 func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash{
+	if tx.hash.IsZero() {
+		tx.hash = hasher.Hash(tx)
+	}
 	return hasher.Hash(tx)
 }
 
