@@ -78,11 +78,11 @@ func (b *Block) Verify() error{
 }
 
 func (b *Block) Decode(r io.Reader, dec Decoder[*Block]) error{
-	return dec.Decode(r, b)
+	return dec.Decode(b)
 }
 
 func (b *Block) Encode(r io.Writer, enc Encoder[*Block]) error{
-	return enc.Encode(r, b)
+	return enc.Encode(b)
 }
 
 // Hash computes the hash of the block using the provided hasher.
