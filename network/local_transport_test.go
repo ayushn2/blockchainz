@@ -22,14 +22,14 @@ func TestSendMessage(t *testing.T) {
 	trb.Connect(tra)
 
 	msg := []byte("Hello, World!")
-	// err := tra.SendMessage(trb.addr, msg)
-	// assert.NoError(t, err)
+	err := tra.SendMessage(trb.Addr(), msg)
+	assert.NoError(t, err)
 
-	select {
-	case rpc := <-trb.Consume():
-		// assert.Equal(t, rpc.From, tra.addr)
-		assert.Equal(t, rpc.Payload, msg)
-	default:
-		t.Error("Expected message not received")
-	}
+	rpc := <-trb.Consume()
+	buf := make([]byte, len(msg))
+	n, err := rpc.Payload.Read(buf)
+	assert.Nil(t, err)
+	assert.Equal(t, n, len(msg))
+
+	
 }

@@ -12,6 +12,7 @@ import (
 var defaultBlockTime = 5 * time.Second // Default block time if not provided
 
 type ServerOpts struct{
+	RPCHandler RPCHandler
 	Transports []Transport
 	BlockTime time.Duration
 	PrivateKey *crypto.PrivateKey
@@ -27,10 +28,12 @@ type Server struct {
 }
 
 func NewServer(opts ServerOpts) *Server {
+	
 	if opts.BlockTime == time.Duration(0){
 		opts.BlockTime = defaultBlockTime
 	}
-	return &Server{
+
+	s := &Server{
 		ServerOpts: opts,
 		blockTime: opts.BlockTime,
 		memPool: NewTxPool(), // Initialize a new transaction pool
@@ -38,6 +41,14 @@ func NewServer(opts ServerOpts) *Server {
 		rpcCh: make(chan RPC), 
 		quitch: make(chan struct{}, 1),
 	}
+
+	if opts.RPCHandler == nil {
+		opts.RPCHandler = NewDefaultRPCHandler(s) // Default RPC handler if none provided
+	}
+
+	s.ServerOpts = opts // Assign the options to the server
+
+	return s
 }
 
 func (s *Server) Start() {
@@ -49,7 +60,9 @@ free:
 		select {
 		case rpc := <-s.rpcCh:
 			// Handle incoming RPC
-			fmt.Printf("Received RPC from %s: %s\n", rpc.From, string(rpc.Payload))
+			if err := s.RPCHandler.HandleRPC(rpc); err != nil {
+				logrus.Error(err)
+			}
 		case <-s.quitch:
 			break free
 		case <-ticker.C:
@@ -64,21 +77,25 @@ free:
 	fmt.Println("Server shutting down...")
 }
 
-func (s *Server) handleTransaction(tx *core.Transaction) error {
-	if err := tx.Verify(); err != nil {
-		return fmt.Errorf("failed to verify transaction: %w", err)
-	}
+func (s *Server) ProcessTransaction(from NetAddr, tx *core.Transaction) error {
 
 	hash := tx.Hash(core.TxHasher{})
 
 	if s.memPool.Has(hash){
 		logrus.WithFields(logrus.Fields{
 			"hash": hash,
+			"mempool length": s.memPool.Len(),
 		}).Info("mempool already contains this transaction")
 
 		return nil
 	}
-	
+
+	if err := tx.Verify(); err != nil {
+		return fmt.Errorf("failed to verify transaction: %w", err)
+	}
+
+	tx.SetFirstSeen(time.Now().UnixNano())
+
 	logrus.WithFields(logrus.Fields{
 		"hash": tx.Hash(core.TxHasher{}),
 	}).Info("adding new transaction to mempool")
@@ -103,7 +120,7 @@ func (s *Server) initTransports() {
 				// Handle incoming RPC
 				// For example, you might want to process the message or forward it
 				// to another transport
-				fmt.Printf("Received message from %s: %s\n", rpc.From, string(rpc.Payload))
+				
 				s.rpcCh <- rpc // Forward the RPC to the server's main channel
 			}
 		}(tr)
