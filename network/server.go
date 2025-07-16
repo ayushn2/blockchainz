@@ -12,7 +12,8 @@ import (
 var defaultBlockTime = 5 * time.Second // Default block time if not provided
 
 type ServerOpts struct{
-	RPCHandler RPCHandler
+	RPCDecodeFunc RPCDecodeFunc // Function to decode RPC messages
+	RPCProcessor RPCProcessor
 	Transports []Transport
 	BlockTime time.Duration
 	PrivateKey *crypto.PrivateKey
@@ -20,7 +21,6 @@ type ServerOpts struct{
 
 type Server struct {
 	ServerOpts
-	blockTime time.Duration // the time after which server needs to consume the mempool and put it in the block and sign it
 	memPool *TxPool // Memory pool for transactions
 	isValidator bool // Indicates if the server/node is a validator
 	rpcCh chan RPC
@@ -33,34 +33,40 @@ func NewServer(opts ServerOpts) *Server {
 		opts.BlockTime = defaultBlockTime
 	}
 
+	if opts.RPCDecodeFunc == nil{
+		opts.RPCDecodeFunc = DefaultRPCDecodeFunc
+	}
+
 	s := &Server{
 		ServerOpts: opts,
-		blockTime: opts.BlockTime,
 		memPool: NewTxPool(), // Initialize a new transaction pool
 		isValidator: opts.PrivateKey != nil, // If a private key is provided, this server/node is a validator
 		rpcCh: make(chan RPC), 
 		quitch: make(chan struct{}, 1),
 	}
 
-	if opts.RPCHandler == nil {
-		opts.RPCHandler = NewDefaultRPCHandler(s) // Default RPC handler if none provided
+	// if we don't have a RPCProcessor from the server options, we will use the server itself as default
+	if s.RPCProcessor == nil {
+		s.RPCProcessor = s
 	}
-
-	s.ServerOpts = opts // Assign the options to the server
 
 	return s
 }
 
 func (s *Server) Start() {
 	s.initTransports()
-	ticker := time.NewTicker(s.blockTime)
+	ticker := time.NewTicker(s.BlockTime)
 
 free:
 	for {
 		select {
 		case rpc := <-s.rpcCh:
-			// Handle incoming RPC
-			if err := s.RPCHandler.HandleRPC(rpc); err != nil {
+			msg, err := s.RPCDecodeFunc(rpc)
+			if err != nil {
+				logrus.Error(err)
+			}
+
+			if err := s.RPCProcessor.ProcessMessage(msg); err != nil {
 				logrus.Error(err)
 			}
 		case <-s.quitch:
@@ -77,7 +83,15 @@ free:
 	fmt.Println("Server shutting down...")
 }
 
-func (s *Server) ProcessTransaction(from NetAddr, tx *core.Transaction) error {
+func (s *Server) ProcessMessage(msg *DecodeMessage) error {
+	switch t := msg.Data.(type) {
+	case *core.Transaction:
+		return s.ProcessTransaction(t)
+	}
+	return nil
+}
+
+func (s *Server) ProcessTransaction(tx *core.Transaction) error {
 
 	hash := tx.Hash(core.TxHasher{})
 
