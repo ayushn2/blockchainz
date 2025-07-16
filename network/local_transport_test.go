@@ -31,5 +31,6 @@ func TestSendMessage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, n, len(msg))
 
-	
+	assert.Equal(t, buf, msg)
+	assert.Equal(t, rpc.From, tra.Addr())
 }

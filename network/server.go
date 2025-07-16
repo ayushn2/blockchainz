@@ -87,6 +87,8 @@ func (s *Server) ProcessTransaction(from NetAddr, tx *core.Transaction) error {
 			"mempool length": s.memPool.Len(),
 		}).Info("mempool already contains this transaction")
 
+	// TODO(@ayushn2): broadcast this tx to peers
+
 		return nil
 	}
 
