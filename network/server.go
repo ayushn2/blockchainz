@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -84,9 +85,20 @@ free:
 }
 
 func (s *Server) ProcessMessage(msg *DecodeMessage) error {
+	
+
 	switch t := msg.Data.(type) {
 	case *core.Transaction:
 		return s.ProcessTransaction(t)
+	}
+	return nil
+}
+
+func (s *Server) broadcast(msg []byte) error{
+	for _, peer := range s.Transports {
+		if err := peer.Broadcast(msg); err != nil {
+			return fmt.Errorf("failed to broadcast message: %w", err)
+		}
 	}
 	return nil
 }
@@ -116,12 +128,20 @@ func (s *Server) ProcessTransaction(tx *core.Transaction) error {
 		"hash": tx.Hash(core.TxHasher{}),
 	}).Info("adding new transaction to mempool")
 
-	if err := s.memPool.Add(tx); err != nil {
-		return fmt.Errorf("failed to add transaction to mempool: %w", err)
+	go s.broadcastTransaction(tx)
+
+	return  s.memPool.Add(tx)
+}
+
+func (s *Server) broadcastTransaction(tx *core.Transaction) error {
+	buf := &bytes.Buffer{}
+	if err := tx.Encode(core.NewGobTxEncoder(buf)); err != nil {
+		return fmt.Errorf("failed to encode transaction: %w", err)
 	}
 
-	fmt.Printf("Transaction added to mempool: %s\n", tx.Hash(core.TxHasher{}))
-	return nil
+	msg := NewMessage(MessageTypeTxn, buf.Bytes())
+
+	return s.broadcast(msg.Bytes())
 }
 
 func (s *Server) createNewBlock() error{
