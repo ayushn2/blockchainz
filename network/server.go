@@ -3,16 +3,21 @@ package network
 import (
 	"bytes"
 	"fmt"
+	"os"
+
 	"time"
 
 	"github.com/ayushn2/blockchainz/core"
 	"github.com/ayushn2/blockchainz/crypto"
+	"github.com/go-kit/log"
 	"github.com/sirupsen/logrus"
 )
 
 var defaultBlockTime = 5 * time.Second // Default block time if not provided
 
 type ServerOpts struct{
+	ID string // Unique identifier for the server
+	Logger log.Logger
 	RPCDecodeFunc RPCDecodeFunc // Function to decode RPC messages
 	RPCProcessor RPCProcessor
 	Transports []Transport
@@ -38,6 +43,11 @@ func NewServer(opts ServerOpts) *Server {
 		opts.RPCDecodeFunc = DefaultRPCDecodeFunc
 	}
 
+	if opts.Logger == nil {
+		opts.Logger = log.NewLogfmtLogger(os.Stderr)
+		opts.Logger = log.With(opts.Logger, "ID", opts.ID)
+	}
+
 	s := &Server{
 		ServerOpts: opts,
 		memPool: NewTxPool(), // Initialize a new transaction pool
@@ -51,12 +61,14 @@ func NewServer(opts ServerOpts) *Server {
 		s.RPCProcessor = s
 	}
 
+	if s.isValidator {
+		go s.validatorLoop() // Start the validator loop if this server is a validator
+	}
 	return s
 }
 
 func (s *Server) Start() {
 	s.initTransports()
-	ticker := time.NewTicker(s.BlockTime)
 
 free:
 	for {
@@ -64,7 +76,9 @@ free:
 		case rpc := <-s.rpcCh:
 			msg, err := s.RPCDecodeFunc(rpc)
 			if err != nil {
-				logrus.Error(err)
+				s.Logger.Log(
+					"error", err,
+				)
 			}
 
 			if err := s.RPCProcessor.ProcessMessage(msg); err != nil {
@@ -72,24 +86,29 @@ free:
 			}
 		case <-s.quitch:
 			break free
-		case <-ticker.C:
-			// Check if the server is a validator and if there are transactions in the mempool
-			//this is just consensus placeholder for now
-			if s.isValidator && s.memPool.Len() > 0 {
-			s.createNewBlock()
-			}
+		
 		}
 	}
+	
+	s.Logger.Log("msg", "server is shutting down")
+	
+}
 
-	fmt.Println("Server shutting down...")
+func (s *Server) validatorLoop(){
+	ticker := time.NewTicker(s.BlockTime)
+	
+	s.Logger.Log("msg", "starting validator loop", "blockTime", s.BlockTime)
+
+	for {	
+		<- ticker.C 
+		s.createNewBlock()
+	}
 }
 
 func (s *Server) ProcessMessage(msg *DecodeMessage) error {
-	
-
 	switch t := msg.Data.(type) {
 	case *core.Transaction:
-		return s.ProcessTransaction(t)
+		return s.processTransaction(t)
 	}
 	return nil
 }
@@ -103,18 +122,11 @@ func (s *Server) broadcast(msg []byte) error{
 	return nil
 }
 
-func (s *Server) ProcessTransaction(tx *core.Transaction) error {
+func (s *Server) processTransaction(tx *core.Transaction) error {
 
 	hash := tx.Hash(core.TxHasher{})
 
 	if s.memPool.Has(hash){
-		logrus.WithFields(logrus.Fields{
-			"hash": hash,
-			"mempool length": s.memPool.Len(),
-		}).Info("mempool already contains this transaction")
-
-	// TODO(@ayushn2): broadcast this tx to peers
-
 		return nil
 	}
 
@@ -127,6 +139,11 @@ func (s *Server) ProcessTransaction(tx *core.Transaction) error {
 	logrus.WithFields(logrus.Fields{
 		"hash": tx.Hash(core.TxHasher{}),
 	}).Info("adding new transaction to mempool")
+
+		s.Logger.Log(
+			"msg", "adding new transaction to mempool",
+			"hash",hash,
+			"mempool_length",s.memPool.Len())
 
 	go s.broadcastTransaction(tx)
 
