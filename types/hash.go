@@ -8,11 +8,11 @@ import (
 type Hash [32]uint8
 
 func (h Hash) IsZero() bool {
-	for _, b := range h {
-		if b != 0 {
-			return false
-		}
-	}
+	for i := 0; i < len(h); i++ {
+    if h[i] != 0 {
+        return false
+    }
+}
 	return true
 }
 

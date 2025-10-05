@@ -27,11 +27,11 @@ func TestAddBlock(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 
 	lenBlock := 100
-	for i := range(lenBlock){
-		block := randomBlockWithSignature(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
-		err := bc.AddBlock(block)
-		assert.Nil(t, err)
-	}
+for i := 0; i < lenBlock; i++ {
+    block := randomBlockWithSignature(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
+    err := bc.AddBlock(block)
+    assert.Nil(t, err)
+}
 	
 	assert.Equal(t, bc.Height(), uint32(lenBlock))
 	assert.Equal(t, len(bc.headers), lenBlock +1)
@@ -43,7 +43,7 @@ func TestGetHeader(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 
 	// Add a block with height 1
-	for i := range(10){
+	for i := 0; i < 10; i++ {
 		block := randomBlockWithSignature(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
 		err := bc.AddBlock(block)
 		assert.Nil(t, err)

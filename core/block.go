@@ -68,11 +68,12 @@ func (b *Block) Verify() error{
 		return fmt.Errorf("block has invalid signature")
 	}
 
-	for _, tx := range b.Transactions{
-		if err := tx.Verify(); err != nil {
-			return err
-		}
-	}
+	for i := 0; i < len(b.Transactions); i++ {
+    tx := b.Transactions[i]
+    if err := tx.Verify(); err != nil {
+        return err
+    }
+}
 
 	return nil
 }
