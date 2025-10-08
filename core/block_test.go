@@ -15,7 +15,7 @@ import (
 
 func TestHashBlock(t *testing.T){
 	
-	b := randomBlock(0, types.Hash{})
+	b := randomBlock(t, 0, types.Hash{})
 	fmt.Println(b.Hash(BlockHasher{}))
 }
 
@@ -29,7 +29,7 @@ func TestSignBlock(t *testing.T){
 
 func TestBlockVerify(t *testing.T){
 	privKey := crypto.GeneratePrivateKey()
-	b := randomBlock(0, types.Hash{})
+	b := randomBlock(t, 0, types.Hash{})
 	
 	assert.Nil(t, b.Sign(privKey), "Block should be signed successfully")
 	assert.Nil(t, b.Verify())
@@ -51,14 +51,15 @@ func randomBlock(t *testing.T ,height uint32, prevBlockHash types.Hash) *Block {
 		PrevHash:  prevBlockHash,
 		Timestamp: uint64(time.Now().UnixNano()),
 		Height:    height,
-		Nonce:     0,
 	}
 
-	tx := []Transaction{tx}
 
-	b := NewBlock(h, tx)
+	b, err := NewBlock(h, []Transaction{tx})
+	assert.Nil(t, err)
 	assert.Nil(t, b.Sign(privKey), "Block should be signed successfully")
-	dataHash, err := calculateDataHash(b.Transactions)
+	dataHash, err := CalculateDataHash(b.Transactions)
 	b.Header.DataHash = dataHash
 	assert.Nil(t, b.Sign(privKey))
+
+	return b
 }

@@ -28,7 +28,7 @@ func TestAddBlock(t *testing.T) {
 
 	lenBlock := 100
 for i := 0; i < lenBlock; i++ {
-    block := randomBlockWithSignature(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
+    block := randomBlock(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
     err := bc.AddBlock(block)
     assert.Nil(t, err)
 }
@@ -36,7 +36,7 @@ for i := 0; i < lenBlock; i++ {
 	assert.Equal(t, bc.Height(), uint32(lenBlock))
 	assert.Equal(t, len(bc.headers), lenBlock +1)
 
-	assert.NotNil(t, bc.AddBlock(randomBlockWithSignature(t, 98,types.Hash{}))) //should not have added the new block
+	assert.NotNil(t, bc.AddBlock(randomBlock(t, 98,types.Hash{}))) //should not have added the new block
 }
 
 func TestGetHeader(t *testing.T) {
@@ -44,7 +44,7 @@ func TestGetHeader(t *testing.T) {
 
 	// Add a block with height 1
 	for i := 0; i < 10; i++ {
-		block := randomBlockWithSignature(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
+		block := randomBlock(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
 		err := bc.AddBlock(block)
 		assert.Nil(t, err)
 		header, err := bc.GetHeader(block.Height)

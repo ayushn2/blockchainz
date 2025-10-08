@@ -8,6 +8,7 @@ import (
 	"io"
 	"github.com/ayushn2/blockchainz/crypto"
 	"github.com/ayushn2/blockchainz/types"
+	"time"
 )
 
 // Hash, prev hash, timestamp, nonce, transactions
@@ -38,11 +39,31 @@ type Block struct{
 	hash types.Hash // hash of the block, can be calculated from header and transactions
 }
 
-func NewBlock(h *Header, tx []Transaction) *Block {
+func NewBlock(h *Header, tx []Transaction) (*Block,error) {
 	return &Block{
 		Header: h,
 		Transactions: tx,
+	}, nil
+}
+
+func NewBlockFromPrevHeader(prevHeader *Header, txx []Transaction) (*Block, error) {
+	dataHash, err := CalculateDataHash(txx)
+	if err != nil{
+		return nil, err
 	}
+	header := &Header{
+		Version: 1,
+		Height: prevHeader.Height + 1,
+		DataHash: dataHash,
+		PrevHash: BlockHasher{}.Hash(prevHeader),
+		Timestamp: uint64(time.Now().UnixNano()),
+	}
+
+	block, err := NewBlock(header, txx)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 func (b *Block) AddTransaction(tx *Transaction){

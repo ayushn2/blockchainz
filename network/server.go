@@ -170,7 +170,24 @@ func (s *Server) broadcastTransaction(tx *core.Transaction) error {
 }
 
 func (s *Server) createNewBlock() error{
-	fmt.Println("creating a new block...")
+	currentHeader, err := s.chain.GetHeader(s.chain.Height())
+	if err != nil{
+		return err
+	}
+
+	block, err := core.NewBlockFromPrevHeader(currentHeader, nil)
+	if err != nil{
+		return err
+	}
+
+	if err := block.Sign(*s.PrivateKey); err != nil{
+		return err
+	}
+
+	if err := s.chain.AddBlock(block); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -195,5 +212,6 @@ func genesisBlock() *core.Block {
 		Timestamp: uint64(time.Now().UnixNano()),
 		
 	}
-	return core.NewBlock(header, nil)
+	b, _ := core.NewBlock(header, nil)
+	return b
 	}
