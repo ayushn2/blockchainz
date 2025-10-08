@@ -45,11 +45,12 @@ func TestTxEncodeDecode(t *testing.T){
 
 	txDecoded := new(Transaction)
 	assert.Nil(t, txDecoded.Decode(NewGobTxDecoder(buf)), "Transaction should decode without error")
+	assert.Equal(t, &tx, txDecoded)
 }
 
-func randomTxWithSignature(t *testing.T) *Transaction {
+func randomTxWithSignature(t *testing.T) Transaction {
 	privKey := crypto.GeneratePrivateKey()
-	tx := &Transaction{
+	tx := Transaction{
 		Data: []byte("test transaction"),
 	}
 	err := tx.Sign(privKey)

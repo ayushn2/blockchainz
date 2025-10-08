@@ -10,7 +10,7 @@ import (
 
 
 func TestNewBlockchain(t *testing.T){
-	bc, err := NewBlockchain(randomBlock(0, types.Hash{}))
+	bc, err := NewBlockchain(randomBlock(t, 0, types.Hash{}))
 	assert.Nil(t, err)
 	assert.NotNil(t, bc.validator)
 	assert.Equal(t, bc.Height(), uint32(0))
@@ -57,18 +57,18 @@ func TestAddBlockToHigh(t *testing.T){
 	bc := newBlockchainWithGenesis(t)
 
 	// Add block with height 1
-	block := randomBlockWithSignature(t, 1, getPrevBlockHash(t, bc, uint32(1)))
+	block := randomBlock(t, 1, getPrevBlockHash(t, bc, uint32(1)))
 	err := bc.AddBlock(block)
 	assert.Nil(t, err)
 
 	// Add a block with height 10
-	block = randomBlockWithSignature(t, 10, types.Hash{})
+	block = randomBlock(t, 10, types.Hash{})
 	err = bc.AddBlock(block)
 	assert.NotNil(t, err)
 }
 
 func newBlockchainWithGenesis(t *testing.T) *Blockchain{
-	bc, err := NewBlockchain(randomBlock(0, types.Hash{}))
+	bc, err := NewBlockchain(randomBlock(t, 0, types.Hash{}))
 	assert.Nil(t, err)
 
 	return bc

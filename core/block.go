@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/gob"
+	"crypto/sha256" 
 	"fmt"
 	"io"
 	"github.com/ayushn2/blockchainz/crypto"
@@ -12,10 +13,11 @@ import (
 // Hash, prev hash, timestamp, nonce, transactions
 type Header struct {
 	Version	uint32
+	DataHash types.Hash
 	PrevHash types.Hash
 	Timestamp uint64
 	Height uint32
-	Nonce uint64
+	
 }
 
 func (h *Header) Bytes() []byte{
@@ -74,6 +76,15 @@ func (b *Block) Verify() error{
         return err
     }
 }
+	dataHash, err := CalculateDataHash(b.Transactions)
+
+	if err != nil{
+		return fmt.Errorf("failed to calculate data hash: %w", err)
+	}
+
+	if dataHash != b.DataHash {
+		return fmt.Errorf("block (%s) has invalid data hash", b.Hash(BlockHasher{}))
+	}
 
 	return nil
 }
@@ -94,4 +105,21 @@ func (b *Block) Hash(hasher Hasher[*Header]) types.Hash{
 	}
 
 	return b.hash
+}
+
+func CalculateDataHash(txx []Transaction)(hash types.Hash,err error){
+	
+		buf := &bytes.Buffer{}
+		
+	
+	
+
+	for i := 0; i< len(txx); i++ {
+		tx := txx[i]
+		if err = tx.Encode(NewGobTxEncoder(buf)); err != nil {
+			return 
+		}
+	}
+	hash = sha256.Sum256(buf.Bytes())
+	return 
 }

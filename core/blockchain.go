@@ -10,6 +10,7 @@ import (
 // The Blockchain is a state machine, that transitions from one state to another
 // The genesis block is the initial state of the blockchain
 
+
 type Blockchain struct{
 	store Storage
 	lock sync.RWMutex

@@ -21,7 +21,7 @@ func TestHashBlock(t *testing.T){
 
 func TestSignBlock(t *testing.T){
 	privKey := crypto.GeneratePrivateKey()
-	b := randomBlock(0, types.Hash{})
+	b := randomBlock(t, 0, types.Hash{})
 	err := b.Sign(privKey)
 	assert.Nil(t, err, "Block should be signed successfully")
 	assert.NotNil(t, b.Signature, "Block signature should not be nil after signing")
@@ -43,7 +43,9 @@ func TestBlockVerify(t *testing.T){
 	assert.NotNil(t, b.Verify(), "Block verification should fail with different validator public key")
 }
 
-func randomBlock(height uint32, prevBlockHash types.Hash) *Block {
+func randomBlock(t *testing.T ,height uint32, prevBlockHash types.Hash) *Block {
+	privKey := crypto.GeneratePrivateKey()
+	tx := randomTxWithSignature(t)
 	h := &Header{
 		Version:   1,
 		PrevHash:  prevBlockHash,
@@ -52,18 +54,11 @@ func randomBlock(height uint32, prevBlockHash types.Hash) *Block {
 		Nonce:     0,
 	}
 
-	tx := []Transaction{}
+	tx := []Transaction{tx}
 
-	return NewBlock(h, tx)
-}
-
-func randomBlockWithSignature(t *testing.T, height uint32, prevBlockHash types.Hash) *Block {
-	privKey := crypto.GeneratePrivateKey() // this private key will be of the validator of the block, that's why we're not passing it
-	b := randomBlock(height, prevBlockHash)
-	tx := randomTxWithSignature(t)
-	b.AddTransaction(tx)
-	err := b.Sign(privKey)
-	assert.Nil(t, err)
- 
-	return b
+	b := NewBlock(h, tx)
+	assert.Nil(t, b.Sign(privKey), "Block should be signed successfully")
+	dataHash, err := calculateDataHash(b.Transactions)
+	b.Header.DataHash = dataHash
+	assert.Nil(t, b.Sign(privKey))
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/ayushn2/blockchainz/crypto"
 	"github.com/go-kit/log"
 	"github.com/sirupsen/logrus"
+	"github.com/ayushn2/blockchainz/types"
 )
 
 var defaultBlockTime = 5 * time.Second // Default block time if not provided
@@ -23,17 +24,19 @@ type ServerOpts struct{
 	Transports []Transport
 	BlockTime time.Duration
 	PrivateKey *crypto.PrivateKey
+
 }
 
 type Server struct {
 	ServerOpts
 	memPool *TxPool // Memory pool for transactions
+	chain*core.Blockchain // Reference to the blockchain
 	isValidator bool // Indicates if the server/node is a validator
 	rpcCh chan RPC
 	quitch chan struct{}
 }
 
-func NewServer(opts ServerOpts) *Server {
+func NewServer(opts ServerOpts) (*Server, error) {
 	
 	if opts.BlockTime == time.Duration(0){
 		opts.BlockTime = defaultBlockTime
@@ -48,8 +51,13 @@ func NewServer(opts ServerOpts) *Server {
 		opts.Logger = log.With(opts.Logger, "ID", opts.ID)
 	}
 
+	chain, err := core.NewBlockchain(genesisBlock())
+	if err != nil{
+		return nil, err
+	}
 	s := &Server{
 		ServerOpts: opts,
+		chain: chain,
 		memPool: NewTxPool(), // Initialize a new transaction pool
 		isValidator: opts.PrivateKey != nil, // If a private key is provided, this server/node is a validator
 		rpcCh: make(chan RPC), 
@@ -64,7 +72,7 @@ func NewServer(opts ServerOpts) *Server {
 	if s.isValidator {
 		go s.validatorLoop() // Start the validator loop if this server is a validator
 	}
-	return s
+	return s, nil
 }
 
 func (s *Server) Start() {
@@ -179,3 +187,13 @@ func (s *Server) initTransports() {
 		}(tr)
 	}
 }
+
+func genesisBlock() *core.Block {
+	header := &core.Header{
+		Version: 1,
+		DataHash: types.Hash{}, // No transactions in genesis block
+		Timestamp: uint64(time.Now().UnixNano()),
+		
+	}
+	return core.NewBlock(header, nil)
+	}
