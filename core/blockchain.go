@@ -4,44 +4,34 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"github.com/go-kit/log"
 )
 
-// The Blockchain is a state machine, that transitions from one state to another
-// The genesis block is the initial state of the blockchain
-
-
-type Blockchain struct{
-	store Storage
-	lock sync.RWMutex
-	headers []*Header
+type Blockchain struct {
+	logger    log.Logger
+	store     Storage
+	lock      sync.RWMutex
+	headers   []*Header
 	validator Validator
 }
 
-func NewBlockchain(genesis *Block) (*Blockchain, error) {
+func NewBlockchain(l log.Logger, genesis *Block) (*Blockchain, error) {
 	bc := &Blockchain{
 		headers: []*Header{},
-		store: NewMemoryStorage(),
+		store:   NewMemorystore(),
+		logger:  l,
 	}
 	bc.validator = NewBlockValidator(bc)
-
 	err := bc.addBlockWithoutValidation(genesis)
 
-	// return &Blockchain{
-	// 	store: store,
-	// 	headers: []*Header{},
-	// 	validator: NewBlockValidator(bc),
-	// }
-
-	return  bc, err
+	return bc, err
 }
 
-func (bc *Blockchain) SetValidator(v Validator){
+func (bc *Blockchain) SetValidator(v Validator) {
 	bc.validator = v
 }
 
-func (bc *Blockchain) AddBlock(b *Block) error{
-	// validate
+func (bc *Blockchain) AddBlock(b *Block) error {
 	if err := bc.validator.ValidateBlock(b); err != nil {
 		return err
 	}
@@ -51,7 +41,7 @@ func (bc *Blockchain) AddBlock(b *Block) error{
 
 func (bc *Blockchain) GetHeader(height uint32) (*Header, error) {
 	if height > bc.Height() {
-		return nil, fmt.Errorf("Header not found for prev block height %d, current height is %d", height, bc.Height())
+		return nil, fmt.Errorf("given height (%d) too high", height)
 	}
 
 	bc.lock.Lock()
@@ -64,21 +54,26 @@ func (bc *Blockchain) HasBlock(height uint32) bool {
 	return height <= bc.Height()
 }
 
-func (bc *Blockchain) Height() uint32{
+// [0, 1, 2 ,3] => 4 len
+// [0, 1, 2 ,3] => 3 height
+func (bc *Blockchain) Height() uint32 {
 	bc.lock.RLock()
 	defer bc.lock.RUnlock()
-	return uint32(len(bc.headers) -1)
+
+	return uint32(len(bc.headers) - 1)
 }
 
-func (bc *Blockchain) addBlockWithoutValidation(b *Block) error{
+func (bc *Blockchain) addBlockWithoutValidation(b *Block) error {
 	bc.lock.Lock()
 	bc.headers = append(bc.headers, b.Header)
 	bc.lock.Unlock()
-	
-	logrus.WithFields(logrus.Fields{
-		"height": b.Height,
-		"hash": b.Hash(BlockHasher{}),
-	}).Info("adding new block")
+
+	bc.logger.Log(
+		"msg", "new block",
+		"hash", b.Hash(BlockHasher{}),
+		"height", b.Height,
+		"transactions", len(b.Transactions),
+	)
 
 	return bc.store.Put(b)
 }

@@ -7,14 +7,13 @@ import (
 	"github.com/ayushn2/blockchainz/types"
 )
 
-type Transaction struct{
-	Data []byte//any type of data can be stored in a transaction, as this is a generic blockchain
+type Transaction struct {
+	Data      []byte
+	From      crypto.PublicKey
+	Signature *crypto.Signature
 
-	From crypto.PublicKey // public key of the sender
-	Signature *crypto.Signature // signature of the transaction by the sender
-
-	hash types.Hash // hash of the transaction, computed from Data
-	firstSeen int64 // timestamp when the transaction was first seen locally
+	// cached version of the tx data hash
+	hash types.Hash
 }
 
 func NewTransaction(data []byte) *Transaction {
@@ -23,14 +22,14 @@ func NewTransaction(data []byte) *Transaction {
 	}
 }
 
-func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash{
+func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
 	if tx.hash.IsZero() {
 		tx.hash = hasher.Hash(tx)
 	}
-	return hasher.Hash(tx)
+	return tx.hash
 }
 
-func (tx *Transaction) Sign(privKey crypto.PrivateKey) error{
+func (tx *Transaction) Sign(privKey crypto.PrivateKey) error {
 	sig, err := privKey.Sign(tx.Data)
 	if err != nil {
 		return err
@@ -42,7 +41,7 @@ func (tx *Transaction) Sign(privKey crypto.PrivateKey) error{
 	return nil
 }
 
-func (tx *Transaction) Verify() error{
+func (tx *Transaction) Verify() error {
 	if tx.Signature == nil {
 		return fmt.Errorf("transaction has no signature")
 	}
@@ -52,7 +51,6 @@ func (tx *Transaction) Verify() error{
 	}
 
 	return nil
-	
 }
 
 func (tx *Transaction) Decode(dec Decoder[*Transaction]) error {
@@ -61,12 +59,4 @@ func (tx *Transaction) Decode(dec Decoder[*Transaction]) error {
 
 func (tx *Transaction) Encode(enc Encoder[*Transaction]) error {
 	return enc.Encode(tx)
-}
-
-func (tx *Transaction) SetFirstSeen(timestamp int64) {
-	tx.firstSeen = timestamp
-}
-
-func (tx *Transaction) FirstSeen() int64 {
-	return tx.firstSeen
 }

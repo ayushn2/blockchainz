@@ -2,26 +2,24 @@ package core
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
-	"crypto/sha256" 
 	"fmt"
-	"io"
+	"time"
+
 	"github.com/ayushn2/blockchainz/crypto"
 	"github.com/ayushn2/blockchainz/types"
-	"time"
 )
 
-// Hash, prev hash, timestamp, nonce, transactions
 type Header struct {
-	Version	uint32
-	DataHash types.Hash
-	PrevHash types.Hash
-	Timestamp uint64
-	Height uint32
-	
+	Version       uint32
+	DataHash      types.Hash
+	PrevBlockHash types.Hash
+	Height        uint32
+	Timestamp     int64
 }
 
-func (h *Header) Bytes() []byte{
+func (h *Header) Bytes() []byte {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	enc.Encode(h)
@@ -29,48 +27,45 @@ func (h *Header) Bytes() []byte{
 	return buf.Bytes()
 }
 
-type Block struct{
+type Block struct {
 	*Header
-	Transactions []Transaction
-	Validator crypto.PublicKey // public key of the validator who created the block
-	Signature *crypto.Signature // signature of the block header by the validator
-	// Height uint32 // height of the block in the blockchain, can be used to verify the order of blocks
-	// cached version of the header hash
-	hash types.Hash // hash of the block, can be calculated from header and transactions
+	Transactions []*Transaction
+	Validator    crypto.PublicKey
+	Signature    *crypto.Signature
+
+	// Cached version of the header hash
+	hash types.Hash
 }
 
-func NewBlock(h *Header, tx []Transaction) (*Block,error) {
+func NewBlock(h *Header, txx []*Transaction) (*Block, error) {
 	return &Block{
-		Header: h,
-		Transactions: tx,
+		Header:       h,
+		Transactions: txx,
 	}, nil
 }
 
-func NewBlockFromPrevHeader(prevHeader *Header, txx []Transaction) (*Block, error) {
+func NewBlockFromPrevHeader(prevHeader *Header, txx []*Transaction) (*Block, error) {
 	dataHash, err := CalculateDataHash(txx)
-	if err != nil{
-		return nil, err
-	}
-	header := &Header{
-		Version: 1,
-		Height: prevHeader.Height + 1,
-		DataHash: dataHash,
-		PrevHash: BlockHasher{}.Hash(prevHeader),
-		Timestamp: uint64(time.Now().UnixNano()),
-	}
-
-	block, err := NewBlock(header, txx)
 	if err != nil {
 		return nil, err
 	}
-	return block, nil
+
+	header := &Header{
+		Version:       1,
+		Height:        prevHeader.Height + 1,
+		DataHash:      dataHash,
+		PrevBlockHash: BlockHasher{}.Hash(prevHeader),
+		Timestamp:     time.Now().UnixNano(),
+	}
+
+	return NewBlock(header, txx)
 }
 
-func (b *Block) AddTransaction(tx *Transaction){
-	b.Transactions = append(b.Transactions, *tx)
+func (b *Block) AddTransaction(tx *Transaction) {
+	b.Transactions = append(b.Transactions, tx)
 }
 
-func (b *Block) Sign(privKey crypto.PrivateKey) error{
+func (b *Block) Sign(privKey crypto.PrivateKey) error {
 	sig, err := privKey.Sign(b.Header.Bytes())
 	if err != nil {
 		return err
@@ -82,7 +77,7 @@ func (b *Block) Sign(privKey crypto.PrivateKey) error{
 	return nil
 }
 
-func (b *Block) Verify() error{
+func (b *Block) Verify() error {
 	if b.Signature == nil {
 		return fmt.Errorf("block has no signature")
 	}
@@ -91,36 +86,32 @@ func (b *Block) Verify() error{
 		return fmt.Errorf("block has invalid signature")
 	}
 
-	for i := 0; i < len(b.Transactions); i++ {
-    tx := b.Transactions[i]
-    if err := tx.Verify(); err != nil {
-        return err
-    }
-}
-	dataHash, err := CalculateDataHash(b.Transactions)
-
-	if err != nil{
-		return fmt.Errorf("failed to calculate data hash: %w", err)
+	for _, tx := range b.Transactions {
+		if err := tx.Verify(); err != nil {
+			return err
+		}
 	}
 
+	dataHash, err := CalculateDataHash(b.Transactions)
+	if err != nil {
+		return err
+	}
 	if dataHash != b.DataHash {
-		return fmt.Errorf("block (%s) has invalid data hash", b.Hash(BlockHasher{}))
+		return fmt.Errorf("block (%s) has an invalid data hash", b.Hash(BlockHasher{}))
 	}
 
 	return nil
 }
 
-func (b *Block) Decode(r io.Reader, dec Decoder[*Block]) error{
+func (b *Block) Decode(dec Decoder[*Block]) error {
 	return dec.Decode(b)
 }
 
-func (b *Block) Encode(r io.Writer, enc Encoder[*Block]) error{
+func (b *Block) Encode(enc Encoder[*Block]) error {
 	return enc.Encode(b)
 }
 
-// Hash computes the hash of the block using the provided hasher.
-// Hasher[*Block] means the hasher works specifically with *Block.
-func (b *Block) Hash(hasher Hasher[*Header]) types.Hash{
+func (b *Block) Hash(hasher Hasher[*Header]) types.Hash {
 	if b.hash.IsZero() {
 		b.hash = hasher.Hash(b.Header)
 	}
@@ -128,19 +119,16 @@ func (b *Block) Hash(hasher Hasher[*Header]) types.Hash{
 	return b.hash
 }
 
-func CalculateDataHash(txx []Transaction)(hash types.Hash,err error){
-	
-		buf := &bytes.Buffer{}
-		
-	
-	
+func CalculateDataHash(txx []*Transaction) (hash types.Hash, err error) {
+	buf := &bytes.Buffer{}
 
-	for i := 0; i< len(txx); i++ {
-		tx := txx[i]
+	for _, tx := range txx {
 		if err = tx.Encode(NewGobTxEncoder(buf)); err != nil {
-			return 
+			return
 		}
 	}
+
 	hash = sha256.Sum256(buf.Bytes())
-	return 
+
+	return
 }

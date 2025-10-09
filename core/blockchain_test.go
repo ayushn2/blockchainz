@@ -4,14 +4,26 @@ import (
 	"testing"
 
 	"github.com/ayushn2/blockchainz/types"
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAddBlock(t *testing.T) {
+	bc := newBlockchainWithGenesis(t)
 
+	lenBlocks := 1000
+	for i := 0; i < lenBlocks; i++ {
+		block := randomBlock(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
+		assert.Nil(t, bc.AddBlock(block))
+	}
 
-func TestNewBlockchain(t *testing.T){
-	bc, err := NewBlockchain(randomBlock(t, 0, types.Hash{}))
-	assert.Nil(t, err)
+	assert.Equal(t, bc.Height(), uint32(lenBlocks))
+	assert.Equal(t, len(bc.headers), lenBlocks+1)
+	assert.NotNil(t, bc.AddBlock(randomBlock(t, 89, types.Hash{})))
+}
+
+func TestNewBlockchain(t *testing.T) {
+	bc := newBlockchainWithGenesis(t)
 	assert.NotNil(t, bc.validator)
 	assert.Equal(t, bc.Height(), uint32(0))
 }
@@ -23,60 +35,35 @@ func TestHasBlock(t *testing.T) {
 	assert.False(t, bc.HasBlock(100))
 }
 
-func TestAddBlock(t *testing.T) {
-	bc := newBlockchainWithGenesis(t)
-
-	lenBlock := 100
-for i := 0; i < lenBlock; i++ {
-    block := randomBlock(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
-    err := bc.AddBlock(block)
-    assert.Nil(t, err)
-}
-	
-	assert.Equal(t, bc.Height(), uint32(lenBlock))
-	assert.Equal(t, len(bc.headers), lenBlock +1)
-
-	assert.NotNil(t, bc.AddBlock(randomBlock(t, 98,types.Hash{}))) //should not have added the new block
-}
-
 func TestGetHeader(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
+	lenBlocks := 1000
 
-	// Add a block with height 1
-	for i := 0; i < 10; i++ {
+	for i := 0; i < lenBlocks; i++ {
 		block := randomBlock(t, uint32(i+1), getPrevBlockHash(t, bc, uint32(i+1)))
-		err := bc.AddBlock(block)
-		assert.Nil(t, err)
+		assert.Nil(t, bc.AddBlock(block))
 		header, err := bc.GetHeader(block.Height)
 		assert.Nil(t, err)
-		assert.Equal(t, block.Header ,header)
+		assert.Equal(t, header, block.Header)
 	}
 }
 
-func TestAddBlockToHigh(t *testing.T){
+func TestAddBlockToHigh(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 
-	// Add block with height 1
-	block := randomBlock(t, 1, getPrevBlockHash(t, bc, uint32(1)))
-	err := bc.AddBlock(block)
-	assert.Nil(t, err)
-
-	// Add a block with height 10
-	block = randomBlock(t, 10, types.Hash{})
-	err = bc.AddBlock(block)
-	assert.NotNil(t, err)
+	assert.Nil(t, bc.AddBlock(randomBlock(t, 1, getPrevBlockHash(t, bc, uint32(1)))))
+	assert.NotNil(t, bc.AddBlock(randomBlock(t, 3, types.Hash{})))
 }
 
-func newBlockchainWithGenesis(t *testing.T) *Blockchain{
-	bc, err := NewBlockchain(randomBlock(t, 0, types.Hash{}))
+func newBlockchainWithGenesis(t *testing.T) *Blockchain {
+	bc, err := NewBlockchain(log.NewNopLogger(), randomBlock(t, 0, types.Hash{}))
 	assert.Nil(t, err)
 
 	return bc
 }
 
-// getPrevBlockHash() gets the height of the previous block and takes height of the current as a parameter
 func getPrevBlockHash(t *testing.T, bc *Blockchain, height uint32) types.Hash {
-	prevHeader, err := bc.GetHeader(height -1)
+	prevHeader, err := bc.GetHeader(height - 1)
 	assert.Nil(t, err)
 	return BlockHasher{}.Hash(prevHeader)
 }
