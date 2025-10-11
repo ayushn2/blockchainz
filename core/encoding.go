@@ -40,11 +40,40 @@ type GobTxDecoder struct{
 
 func NewGobTxDecoder(r io.Reader) *GobTxDecoder {
 	// Register elliptic.P256 to ensure it can be decoded properly
-	// when decoding transactions that contain public keys.
-	gob.Register(elliptic.P256())
+	// when decoding transactions that contain public keys.(done in init())
 	return &GobTxDecoder{r: r}
 }	
 func (d *GobTxDecoder) Decode(tx *Transaction) error {
 	dec := gob.NewDecoder(d.r)
 	return dec.Decode(tx)
 }	
+
+type GobBlockEncoder struct{
+	w io.Writer
+}
+
+func NewGobBlockEncoder(w io.Writer) *GobBlockEncoder{
+	return &GobBlockEncoder{w: w}
+}
+
+func (enc *GobBlockEncoder) Encode(b *Block) error{
+	return gob.NewEncoder(enc.w).Encode(b)
+}
+
+type GobBlockDecoder struct{
+	r io.Reader
+}
+
+func NewGobBlockDecoder(r io.Reader) *GobBlockDecoder{
+	return &GobBlockDecoder{r: r}
+}
+
+func (dec *GobBlockDecoder) Decode(b *Block) error{
+	return gob.NewDecoder(dec.r).Decode(b)
+}
+
+// Ensure elliptic.P256 is registered with gob on package initialization.
+// init() is called automatically when the package is imported.
+func init() {
+	gob.Register(elliptic.P256())
+}

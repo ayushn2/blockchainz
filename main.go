@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
@@ -19,35 +21,71 @@ import (
 
 func main() {
 	trLocal := network.NewLocalTransport("LOCAL")
-	trRemote := network.NewLocalTransport("REMOTE")
-	trLocal.Connect(trRemote)
-	trRemote.Connect(trLocal)
-	// Send a message from LOCAL to REMOTE
+	trRemoteA := network.NewLocalTransport("REMOTE_A")
+	trRemoteB := network.NewLocalTransport("REMOTE_B")
+	trRemoteC := network.NewLocalTransport("REMOTE_C")
 
-	go func(){
+	trLocal.Connect(trRemoteA)
+	trRemoteA.Connect(trRemoteB)
+	trRemoteB.Connect(trRemoteC)
+	trRemoteA.Connect(trLocal)
+
+	initRemoteServers([]network.Transport{trRemoteA, trRemoteB, trRemoteC})
+
+	go func() {
 		for {
-			// Simulate sending messages
-			// local will send message to remote every second in a seperate go routine
-			if err:= sendTransaction(trRemote, trLocal.Addr()); err != nil {
+			if err := sendTransaction(trRemoteA, trLocal.Addr()); err != nil {
 				logrus.Error(err)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 	}()
 
-	privKey := crypto.GeneratePrivateKey()
+	// Simulate a late joining server
+	// It should be able to sync up with the current chain
+	// after joining the network
+	// It should also be able to receive new blocks and txs
+	// after joining the network
+	// concurrently
+	// with other servers
+	go func ()  {
+		time.Sleep(7 * time.Second)
+		trLate := network.NewLocalTransport("LATE_REMOTE")
 
+		
+		trRemoteA.Connect(trLate)
+		
+		lateServer := makeServer(string(trLate.Addr()), trLate, nil)
+		
+		go lateServer.Start()
+	}()
+
+	privKey := crypto.GeneratePrivateKey()
+	localServer := makeServer("LOCAL", trLocal, &privKey)
+	localServer.Start()
+}
+
+func initRemoteServers(trs []network.Transport) {
+	for i := 0; i < len(trs); i++ {
+		id := fmt.Sprintf("REMOTE_%d", i)
+		s := makeServer(id, trs[i], nil)
+		go s.Start()
+	}
+}
+
+func makeServer(id string, tr network.Transport, pk *crypto.PrivateKey) *network.Server {
 	opts := network.ServerOpts{
-		PrivateKey: &privKey,
-		ID: "LOCAL",
-		Transports: []network.Transport{trLocal},
+		PrivateKey: pk,
+		ID:         id,
+		Transports: []network.Transport{tr},
 	}
 
 	s, err := network.NewServer(opts)
 	if err != nil {
-		logrus.Fatal(err)
+		log.Fatal(err)
 	}
-	s.Start()
+
+	return s
 }
 
 func sendTransaction(tr network.Transport, to network.NetAddr) error {
