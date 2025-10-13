@@ -2,82 +2,46 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"log"
-	"math/rand"
-	"strconv"
+	"net"
 	"time"
 
 	"github.com/ayushn2/blockchainz/core"
 	"github.com/ayushn2/blockchainz/crypto"
 	"github.com/ayushn2/blockchainz/network"
-	"github.com/sirupsen/logrus"
 )
 
-// Server
-// Transport => tcp, udp
-// Block
-// TX
-
 func main() {
-	trLocal := network.NewLocalTransport("LOCAL")
-	trRemoteA := network.NewLocalTransport("REMOTE_A")
-	trRemoteB := network.NewLocalTransport("REMOTE_B")
-	trRemoteC := network.NewLocalTransport("REMOTE_C")
+	privKey := crypto.GeneratePrivateKey()
+	localNode := makeServer("LOCAL_NODE", &privKey, ":3000", []string{":4000"})
+	go localNode.Start()
 
-	trLocal.Connect(trRemoteA)
-	trRemoteA.Connect(trRemoteB)
-	trRemoteB.Connect(trRemoteC)
-	trRemoteA.Connect(trLocal)
+	remoteNode := makeServer("REMOTE_NODE", nil, ":4000", []string{":5000"})
+	go remoteNode.Start()
 
-	initRemoteServers([]network.Transport{trRemoteA, trRemoteB, trRemoteC})
+	remoteNodeB := makeServer("REMOTE_NODE_B", nil, ":5000", nil)
+	go remoteNodeB.Start()
 
 	go func() {
-		for {
-			if err := sendTransaction(trRemoteA, trLocal.Addr()); err != nil {
-				logrus.Error(err)
-			}
-			time.Sleep(2 * time.Second)
-		}
+		time.Sleep(6 * time.Second)
+
+		lateNode := makeServer("LATE_NODE", nil, ":6000", []string{":4000"})
+		go lateNode.Start()
 	}()
 
-	// Simulate a late joining server
-	// It should be able to sync up with the current chain
-	// after joining the network
-	// It should also be able to receive new blocks and txs
-	// after joining the network
-	// concurrently
-	// with other servers
-	go func ()  {
-		time.Sleep(7 * time.Second)
-		trLate := network.NewLocalTransport("LATE_REMOTE")
+	time.Sleep(1 * time.Second)
 
-		
-		trRemoteA.Connect(trLate)
-		
-		lateServer := makeServer(string(trLate.Addr()), trLate, nil)
-		
-		go lateServer.Start()
-	}()
+	tcpTester()
 
-	privKey := crypto.GeneratePrivateKey()
-	localServer := makeServer("LOCAL", trLocal, &privKey)
-	localServer.Start()
+	select {}
 }
 
-func initRemoteServers(trs []network.Transport) {
-	for i := 0; i < len(trs); i++ {
-		id := fmt.Sprintf("REMOTE_%d", i)
-		s := makeServer(id, trs[i], nil)
-		go s.Start()
-	}
-}
-
-func makeServer(id string, tr network.Transport, pk *crypto.PrivateKey) *network.Server {
+func makeServer(id string, pk *crypto.PrivateKey, addr string, seedNodes []string) *network.Server {
 	opts := network.ServerOpts{
+		SeedNodes:  seedNodes,
+		ListenAddr: addr,
 		PrivateKey: pk,
 		ID:         id,
-		Transports: []network.Transport{tr},
 	}
 
 	s, err := network.NewServer(opts)
@@ -88,18 +52,26 @@ func makeServer(id string, tr network.Transport, pk *crypto.PrivateKey) *network
 	return s
 }
 
-func sendTransaction(tr network.Transport, to network.NetAddr) error {
-	// Send a random transaction to the given address using the given transport
+func tcpTester() {
+	conn, err := net.Dial("tcp", ":3000")
+	if err != nil {
+		panic(err)
+	}
+
 	privKey := crypto.GeneratePrivateKey()
-	data := []byte(strconv.FormatInt(int64(rand.Intn(1000000000)), 10))
+	// data := []byte{0x03, 0x0a, 0x02, 0x0a, 0x0e}
+	data := []byte{0x03, 0x0a, 0x46, 0x0c, 0x4f, 0x0c, 0x4f, 0x0c, 0x0d, 0x05, 0x0a, 0x0f}
 	tx := core.NewTransaction(data)
 	tx.Sign(privKey)
 	buf := &bytes.Buffer{}
 	if err := tx.Encode(core.NewGobTxEncoder(buf)); err != nil {
-		return err
+		panic(err)
 	}
 
 	msg := network.NewMessage(network.MessageTypeTx, buf.Bytes())
 
-	return tr.SendMessage(to, msg.Bytes())
+	_, err = conn.Write(msg.Bytes())
+	if err != nil {
+		panic(err)
+	}
 }
